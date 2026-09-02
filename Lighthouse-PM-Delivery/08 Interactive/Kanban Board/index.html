@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Project Lighthouse — Kanban Board</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #0F1B2D;
+  --panel: #1B2B44;
+  --panel-light: #24395A;
+  --line: #2E4568;
+  --text: #EEF2F6;
+  --text-muted: #8FA3BD;
+  --beacon: #F2A93B;
+  --sage: #6FA98A;
+  --amber: #F2A93B;
+  --rust: #C86B4A;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; }
+h1, h2, h3 { font-family: 'Source Serif 4', serif; font-weight: 600; margin: 0; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+header.top { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 20px; }
+header.top h1 { font-size: 28px; }
+header.top .sub { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
+nav.tabs { display: flex; gap: 4px; }
+nav.tabs a { color: var(--text-muted); text-decoration: none; font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); }
+nav.tabs a.active { color: var(--bg); background: var(--beacon); border-color: var(--beacon); }
+
+.hint-bar { color: var(--text-muted); font-size: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+.hint-bar button { background: none; border: 1px solid var(--line); color: var(--text-muted); font-size: 11px; padding: 5px 12px; cursor: pointer; }
+.hint-bar button:hover { color: var(--text); border-color: var(--beacon); }
+
+.board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.column { background: var(--panel); border: 1px solid var(--line); min-height: 220px; display: flex; flex-direction: column; transition: background 0.15s; }
+.column.drag-over { background: var(--panel-light); outline: 2px dashed var(--beacon); outline-offset: -2px; }
+
+.column-head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.column-head .count { background: var(--panel-light); color: var(--text); font-size: 11px; padding: 2px 8px; }
+
+.cards { padding: 12px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+
+.card { background: var(--panel-light); border-left: 3px solid var(--beacon); padding: 12px 14px; font-size: 13px; cursor: grab; transition: transform 0.1s, opacity 0.1s; }
+.card:active { cursor: grabbing; }
+.card.dragging { opacity: 0.4; }
+.card.high { border-left-color: var(--rust); }
+.card.medium { border-left-color: var(--amber); }
+.card.low { border-left-color: var(--sage); }
+
+.card .title { font-size: 13.5px; margin-bottom: 6px; line-height: 1.35; }
+.card .meta { color: var(--text-muted); font-size: 11px; display: flex; justify-content: space-between; }
+
+footer.note { color: var(--text-muted); font-size: 12px; margin-top: 40px; border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Project Lighthouse</h1>
+      <div class="sub">Kanban Board · Knowledge Infrastructure Program · Month 13</div>
+    </div>
+    <nav class="tabs">
+      <a href="../Project Dashboard/index.html">Dashboard</a>
+      <a class="active" href="index.html">Kanban</a>
+      <a href="../Risk Dashboard/index.html">Risk</a>
+    </nav>
+  </header>
+
+  <div class="hint-bar">
+    <span>Drag any card between columns to update its status.</span>
+    <button id="reset-board">Reset board</button>
+  </div>
+
+  <div class="board" id="board"></div>
+
+  <footer class="note">
+    Project Lighthouse is a fictional program created for portfolio and skills-demonstration purposes. Card positions reset on page reload; this board does not persist changes to a server.
+  </footer>
+
+</div>
+<script>
+const initialColumns = [
+  {
+    name: "Not Started",
+    cards: [
+      { id: "c1", title: "Migration Wave 3 — APAC", owner: "Migration Lead", priority: "medium" },
+      { id: "c2", title: "Regional go-live — APAC", owner: "Regional Lead (APAC)", priority: "low" },
+      { id: "c3", title: "Benefits realization review", owner: "Program Manager", priority: "low" },
+      { id: "c4", title: "B-104: Improve grounding accuracy for APAC-language content", owner: "Technology Lead", priority: "medium" },
+      { id: "c5", title: "B-106: Expert-finder integration", owner: "Technology Lead", priority: "low" },
+    ]
+  },
+  {
+    name: "In Progress",
+    cards: [
+      { id: "c6", title: "Migration Wave 2 — Americas", owner: "Migration Lead", priority: "medium" },
+      { id: "c7", title: "B-101: Expand AI assistant to Americas index", owner: "Technology Lead", priority: "high" },
+      { id: "c8", title: "B-102: Add citation display to AI assistant", owner: "Technology Lead", priority: "high" },
+      { id: "c9", title: "B-103: Extend confidentiality-aware retrieval to regional tags", owner: "Technology Lead", priority: "high" },
+      { id: "c10", title: "Finalize EMEA support channel content", owner: "Change Lead", priority: "medium" },
+    ]
+  },
+  {
+    name: "Review",
+    cards: [
+      { id: "c11", title: "EMEA Go-Live Readiness Review", owner: "Program Manager", priority: "high" },
+      { id: "c12", title: "Sprint 5 grounding accuracy re-evaluation", owner: "Technology Lead", priority: "medium" },
+    ]
+  },
+  {
+    name: "Done",
+    cards: [
+      { id: "c13", title: "Migration Wave 1 — EMEA", owner: "Migration Lead", priority: "low" },
+      { id: "c14", title: "Platform configuration", owner: "Technology Lead", priority: "low" },
+      { id: "c15", title: "Ethical-wall access control design", owner: "Knowledge Governance Lead", priority: "low" },
+      { id: "c16", title: "Sprint 0–4: Discovery through pilot", owner: "Technology Lead", priority: "low" },
+      { id: "c17", title: "Federated taxonomy model adopted", owner: "Knowledge Governance Lead", priority: "low" },
+    ]
+  }
+];
+
+let columns = JSON.parse(JSON.stringify(initialColumns));
+const board = document.getElementById('board');
+let draggedCardId = null;
+
+function render() {
+  board.innerHTML = '';
+  columns.forEach((col, colIndex) => {
+    const colEl = document.createElement('div');
+    colEl.className = 'column';
+    colEl.dataset.colIndex = colIndex;
+
+    const head = document.createElement('div');
+    head.className = 'column-head';
+    head.innerHTML = `<span>${col.name}</span><span class="count">${col.cards.length}</span>`;
+    colEl.appendChild(head);
+
+    const cardsEl = document.createElement('div');
+    cardsEl.className = 'cards';
+
+    col.cards.forEach(card => {
+      const cardEl = document.createElement('div');
+      cardEl.className = `card ${card.priority}`;
+      cardEl.draggable = true;
+      cardEl.dataset.cardId = card.id;
+      cardEl.innerHTML = `
+        <div class="title">${card.title}</div>
+        <div class="meta"><span>${card.owner}</span><span>${card.priority}</span></div>
+      `;
+
+      cardEl.addEventListener('dragstart', () => {
+        draggedCardId = card.id;
+        cardEl.classList.add('dragging');
+      });
+      cardEl.addEventListener('dragend', () => {
+        cardEl.classList.remove('dragging');
+      });
+
+      cardsEl.appendChild(cardEl);
+    });
+
+    colEl.appendChild(cardsEl);
+
+    colEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      colEl.classList.add('drag-over');
+    });
+    colEl.addEventListener('dragleave', () => {
+      colEl.classList.remove('drag-over');
+    });
+    colEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      colEl.classList.remove('drag-over');
+      moveCard(draggedCardId, colIndex);
+    });
+
+    board.appendChild(colEl);
+  });
+}
+
+function moveCard(cardId, targetColIndex) {
+  let movedCard = null;
+  columns.forEach(col => {
+    const idx = col.cards.findIndex(c => c.id === cardId);
+    if (idx !== -1) {
+      movedCard = col.cards.splice(idx, 1)[0];
+    }
+  });
+  if (movedCard) {
+    columns[targetColIndex].cards.push(movedCard);
+    render();
+  }
+}
+
+document.getElementById('reset-board').addEventListener('click', () => {
+  columns = JSON.parse(JSON.stringify(initialColumns));
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
